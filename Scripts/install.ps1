@@ -41,7 +41,7 @@ If (Test-Path $InstallVersionDirectory) {
 	}
 	
 	# Performance tuning: Disable host monitoring from .NET agents
-	$env:DT_DISABLEPERFCOUNTERS = "True"
+	[Environment]::SetEnvironmentVariable("DT_DISABLEPERFCOUNTERS", "True", "Machine")
 	
 	# Disable and stop Dynatrace service (because it is not configured yet)
 	$DynatraceService = Get-Service -Name $ServiceName
