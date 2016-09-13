@@ -49,7 +49,7 @@ If (Test-Path $InstallVersionDirectory) {
 		$dtwsagent = Get-Content $dtwsagentPath
 		$dtwsagent = $dtwsagent -replace "Name dtwsagent","Name $IISAgentName"
 		$dtwsagent = $dtwsagent -replace "Server localhost","Server $CollectorAddress"
-		$dtwsagent | Out-File $dtwsagentPath
+		$dtwsagent | Out-File $dtwsagentPath -Encoding UTF8
 	
 		# Do .NET agent configurations. Include all w3wp processes		
 		$i = 1
