@@ -30,9 +30,6 @@ I found that Dynatrace agent can slow down your application(s) first load a lot 
 That why it is important to make sure that you have needed pre-requirements ready before you deploy Dynatrace agents to production servers.
 
 I recommend that:
-* You deploy at least **two** collector servers to **each network** where you install Dynatrace agents.
-  * This is important because after you enable IIS agent it **cannot start at all** if it cannot connect collector server. So having just one collector is single point of failure even on load balanced applications.
-  * Dynatrace support also recommend that collector servers should be on same network with agents because traffic between them is uncompressed.
 * Change application pools start mode to "AlwaysRunning".
   * Dynatrace agent instrumentation to .NET agents slows down applications start and if you are using default "OnDemand" -mode then end users will see this as delay.
   * Enable.ps1 -script does this by default for all application pools which are used by any IIS application but make sure that you set this when you are creating new application pools/upgrading applications.
