@@ -71,8 +71,8 @@ If (Test-Path $InstallVersionDirectory) {
 		
 		# Enable modules if not already enabled
 		$EnabledModules = Get-WebConfigurationProperty -Name Collection -Filter "/system.webServer/modules"
-		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX86})) { Enable-WebGlobalModule -Name $IISmoduleX86 }
-		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX64})) { Enable-WebGlobalModule -Name $IISmoduleX64 }
+		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX86})) { Enable-WebGlobalModule -Name $IISmoduleX86 -Precondition "bitness32" }
+		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX64})) { Enable-WebGlobalModule -Name $IISmoduleX64 -Precondition "bitness64" }
 	
 	} Catch {
 		$ErrorMessage = "IIS configuration failed with error: $($_.Exception.Message)"
