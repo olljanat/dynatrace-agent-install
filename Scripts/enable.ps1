@@ -20,29 +20,6 @@ $NETagentPrefix = $AgentPrefix + "_.NET"
 
 # Check that Dynatrace agent is installed
 If (Test-Path $InstallVersionDirectory) {
-	# Configure IIS
-	Try {
-		Import-Module WebAdministration
-		
-		# Workaround: IIS module registration issue
-		$IISmodules = Get-WebGlobalModule
-		If (!($IISmodules | Where-Object {$_.Name -eq $IISmoduleX86})) {
-			New-WebGlobalModule -Name $IISmoduleX86 -Image "$InstallVersionDirectory\agent\lib\dtagent.dll"
-		}
-		If (!($IISmodules | Where-Object {$_.Name -eq $IISmoduleX64})) {
-			New-WebGlobalModule -Name $IISmoduleX64 -Image "$InstallVersionDirectory\agent\lib64\dtagent.dll"
-		}
-		
-		# Enable modules if not already enabled
-		$EnabledModules = Get-WebConfigurationProperty -Name Collection -Filter "/system.webServer/modules"
-		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX86})) { Enable-WebGlobalModule -Name $IISmoduleX86 }
-		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX64})) { Enable-WebGlobalModule -Name $IISmoduleX64 }
-	
-	} Catch {
-		$ErrorMessage = "IIS configuration failed with error: $($_.Exception.Message)"
-		throw $ErrorMessage
-	}
-	
 	# Do IIS agent configurations
 	If (!(Test-Path $($dtwsagentPath + ".orig"))) { # Skip if already configured
 		Copy-Item -Path $dtwsagentPath -Destination $($dtwsagentPath + ".orig")
@@ -64,10 +41,44 @@ If (Test-Path $InstallVersionDirectory) {
 		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "server" -Value $CollectorAddress
 		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "port" -Value "9998"
 	}
+	
+	# Enable Dynatrace service
+	$DynatraceService = Get-Service -Name $ServiceName
+	$DynatraceService | Set-Service -StartupType Automatic
+	$DynatraceService | Start-Service
 
+	# Wait that service starts
+	Start-Sleep -Seconds 30
+	
 	# Stop AppFabric Event Collection Service (if exists) because it locks IIS config
 	$AppFabricEventCollectionService = Get-Service -Name "AppFabric Event Collection Service"
 	$AppFabricEventCollectionService | Stop-Service 
+	
+	# Configure IIS
+	Try {
+		Import-Module WebAdministration
+		
+		# Workaround: IIS module registration issue
+		$IISmodules = Get-WebGlobalModule
+		If (!($IISmodules | Where-Object {$_.Name -eq $IISmoduleX86})) {
+			Remove-WebGlobalModule -Name $IISmoduleX86 # Workaround: Sometimes module is there even when Get-WebGlobalModule cannot find it
+			New-WebGlobalModule -Name $IISmoduleX86 -Image "$InstallVersionDirectory\agent\lib\dtagent.dll" -Precondition "bitness32"
+		}
+		If (!($IISmodules | Where-Object {$_.Name -eq $IISmoduleX64})) {
+			Remove-WebGlobalModule -Name $IISmoduleX64 # Workaround: Sometimes module is there even when Get-WebGlobalModule cannot find it
+			New-WebGlobalModule -Name $IISmoduleX64 -Image "$InstallVersionDirectory\agent\lib64\dtagent.dll" -Precondition "bitness64"
+		}
+		
+		# Enable modules if not already enabled
+		$EnabledModules = Get-WebConfigurationProperty -Name Collection -Filter "/system.webServer/modules"
+		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX86})) { Enable-WebGlobalModule -Name $IISmoduleX86 }
+		If (!($EnabledModules | Where-Object {$_.Name -eq $IISmoduleX64})) { Enable-WebGlobalModule -Name $IISmoduleX64 }
+	
+	} Catch {
+		$ErrorMessage = "IIS configuration failed with error: $($_.Exception.Message)"
+		throw $ErrorMessage
+	}
+	
 	
 	# Performance tuning: Change start mode to "AlwaysRunning" for all application pools which are used by any application
 	Try {
@@ -109,10 +120,6 @@ If (Test-Path $InstallVersionDirectory) {
 	
 	# Restart AppFabric Event Collection Service (if exists)
 	$AppFabricEventCollectionService | Start-Service
-	
-	# Enable Dynatrace service
-	$DynatraceService = Get-Service -Name $ServiceName
-	$DynatraceService | Set-Service -StartupType Automatic
 
 } Else {
 	$ErrorMessage = "Dynatrace installation folder $InstallVersionDirectory does not exist"
