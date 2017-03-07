@@ -1,6 +1,8 @@
 param (
 	[Parameter(Mandatory=$true)][String]$CollectorAddress,
-	[Parameter(Mandatory=$true)][String]$AgentPrefix
+	[Parameter(Mandatory=$true)][String]$AgentPrefix,
+	[Parameter(Mandatory=$false)][ValidateRange(1025,65535)][int]$CollectorPort=9998,
+	[Parameter(Mandatory=$false)][switch]$ForceIisReset
 )
 # This script configures Dynatrace agent monitoring all application pools
 
@@ -39,7 +41,7 @@ If (Test-Path $InstallVersionDirectory) {
 		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "path" -Value "*"
 		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "exec" -Value "w3wp.exe"
 		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "server" -Value $CollectorAddress
-		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "port" -Value "9998"
+		New-ItemProperty -Path HKLM:\SOFTWARE\Wow6432Node\dynaTrace\Agent\Whitelist\$i -PropertyType String -Name "port" -Value "$CollectorPort"
 	}
 	
 	# Enable Dynatrace service
@@ -120,6 +122,8 @@ If (Test-Path $InstallVersionDirectory) {
 	
 	# Restart AppFabric Event Collection Service (if exists)
 	$AppFabricEventCollectionService | Start-Service
+	
+	If ($ForceIisReset) { iisreset }
 
 } Else {
 	$ErrorMessage = "Dynatrace installation folder $InstallVersionDirectory does not exist"
